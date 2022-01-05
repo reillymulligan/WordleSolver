@@ -37,19 +37,27 @@
         static void Main(string[] args)
         {
             var letterFrequencies = new Dictionary<char, int>();
+            var allWords = new HashSet<string>(File.ReadLines(WordsPath));
             var words = new HashSet<string>(File.ReadAllLines(WordsPath));
             var guesses = 0;
-            var correctIndices = new bool[WordLength];
+            var knownLetters = new char[WordLength];
             var correctWord = string.Empty;
+            var lettersInWord = new HashSet<char>();
+            var isHardMode = IsHardMode();
 
             while (guesses < MaxGuesses)
             {
                 SetLetterFrequencies(letterFrequencies, words);
-
+                
                 var guess = GetBestGuess(letterFrequencies, words);
                 if (guess == string.Empty)
                 {
                     break;
+                }
+
+                if (!isHardMode && lettersInWord.Count != WordLength && words.Count != 1)
+                {
+                    guess = GetBestGuessEasyMode(letterFrequencies, words, allWords, lettersInWord);
                 }
 
                 if (!ValidateGuess(guess, words))
@@ -59,12 +67,21 @@
 
                 guesses++;
                 var results = new int[WordLength];
-                var allCorrect = SetResults(guess, results, correctIndices);
+
+                var allCorrect = SetResults(guess, results, knownLetters);
 
                 if (allCorrect)
                 {
                     correctWord = guess;
                     break;
+                }
+
+                for (int i = 0; i < results.Length; i++)
+                {
+                    if (results[i] != 0 && !lettersInWord.Contains(guess[i]))
+                    {
+                        lettersInWord.Add(guess[i]);
+                    }
                 }
 
                 words = GetPrunedWords(guess, words, results);
@@ -112,23 +129,16 @@
         static string GetBestGuess(IDictionary<char, int> letterFrequencies, IEnumerable<string> words)
         {
             var maxScore = int.MinValue;
-            var maxScoreNoRepeats = int.MinValue;
             var bestGuess = string.Empty;
-            var bestGuessNoRepeats = string.Empty;
             foreach (var word in words)
             {
                 var score = 0;
-                var repeats = false;
                 var seen = new HashSet<char>();
                 foreach (var c in word)
                 {
-                    score += letterFrequencies[c];
-                    if (seen.Contains(c))
+                    if (!seen.Contains(c))
                     {
-                        repeats = true;
-                    }
-                    else
-                    {
+                        score += letterFrequencies[c];
                         seen.Add(c);
                     }
                 }
@@ -138,20 +148,36 @@
                     maxScore = score;
                     bestGuess = word;
                 }
+            }
 
-                if (score > maxScoreNoRepeats && !repeats)
+            return bestGuess;
+        }
+
+        static string GetBestGuessEasyMode(IDictionary<char, int> letterFrequencies, IEnumerable<string> words, IEnumerable<string> allWords, HashSet<char> lettersInWord)
+        {
+            var maxScore = int.MinValue;
+            var bestGuess = string.Empty;
+            foreach (var word in allWords)
+            {
+                var score = 0;
+                var seen = new HashSet<char>();
+                foreach (var c in word)
                 {
-                    maxScoreNoRepeats = score;
-                    bestGuessNoRepeats = word;
+                    if (!lettersInWord.Contains(c) && !seen.Contains(c))
+                    {
+                        score += letterFrequencies[c];
+                        seen.Add(c);
+                    }
+                }
+
+                if (score > maxScore)
+                {
+                    maxScore = score;
+                    bestGuess = word;
                 }
             }
 
-            if (bestGuessNoRepeats == string.Empty)
-            {
-                return bestGuess;
-            }
-
-            return bestGuessNoRepeats;
+            return bestGuess;
         }
 
         /// <summary>
@@ -161,12 +187,12 @@
         /// <param name="results">An array of ints representing the results for each letter in the guess</param>
         /// <param name="correctIndices">An array indicating which indices in the word contain the correct value</param>
         /// <returns>A value indicating whether or not all results are correct</returns>
-        static bool SetResults(string guess, int[] results, bool[] correctIndices)
+        static bool SetResults(string guess, int[] results, char[] knownLetters)
         {
             var allCorrect = true;
             for (int i = 0; i < WordLength; i++)
             {
-                if (!correctIndices[i])
+                if (guess[i] != knownLetters[i])
                 {
                     Console.Write($"My guess is {guess}; is {guess[i]} in position {i} correct? {LetterCheckInstructions}");
                     var answer = Console.ReadLine();
@@ -178,9 +204,10 @@
 
                     var result = answer[0] - '0';
                     results[i] = result;
+
                     if (result == 2)
                     {
-                        correctIndices[i] = true;
+                        knownLetters[i] = guess[i];
                     }
                     else
                     {
@@ -248,6 +275,34 @@
         static bool ValidateGuess(string guess, HashSet<string> words)
         {
             Console.WriteLine($"I'm guessing {guess}; is this a valid word? (y/n)");
+            bool isValid = GetValidYesOrNo();
+
+            if (!isValid)
+            {
+                Console.WriteLine("Got it, I'll choose something else.");
+                words.Remove(guess);
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Queries the user to find out if the game is in hard mode.
+        /// </summary>
+        /// <returns>A value indicating whether or not the game is in hard mode</returns>
+        static bool IsHardMode()
+        {
+            Console.WriteLine("Is this hard mode (must use result of previous guesses)? (y/n)");
+            return GetValidYesOrNo();
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the user said yes or no
+        /// </summary>
+        /// <returns>True if the user said yes, false otherwise</returns>
+        static bool GetValidYesOrNo()
+        {
             var answer = Console.ReadLine();
 
             while (answer.Length != 1 && answer[0] != 'y' && answer[0] != 'n')
@@ -256,14 +311,7 @@
                 answer = Console.ReadLine();
             }
 
-            if (answer[0] == 'n')
-            {
-                Console.WriteLine("Got it, I'll choose something else.");
-                words.Remove(guess);
-                return false;
-            }
-
-            return true;
+            return answer[0] == 'y';
         }
     }
 }
