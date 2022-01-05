@@ -177,6 +177,11 @@
                 }
             }
 
+            if (maxScore == 0)
+            {
+                return GetBestGuess(letterFrequencies, words);
+            }
+
             return bestGuess;
         }
 
