@@ -55,12 +55,12 @@
                     break;
                 }
 
-                if (!isHardMode && lettersInWord.Count != WordLength && words.Count != 1)
+                if (!isHardMode && lettersInWord.Count != WordLength && words.Count != 1 && guesses != MaxGuesses - 1)
                 {
                     guess = GetBestGuessEasyMode(letterFrequencies, words, allWords, lettersInWord);
                 }
 
-                if (!ValidateGuess(guess, words))
+                if (!ValidateGuess(guess, words, allWords))
                 {
                     continue;
                 }
@@ -272,7 +272,7 @@
         /// <param name="guess">The guess to be validated</param>
         /// <param name="words">The set of words to remove invalid guesses from</param>
         /// <returns>A value indicating whether or not the guess was valid</returns>
-        static bool ValidateGuess(string guess, HashSet<string> words)
+        static bool ValidateGuess(string guess, HashSet<string> words, HashSet<string> allWords)
         {
             Console.WriteLine($"I'm guessing {guess}; is this a valid word? (y/n)");
             bool isValid = GetValidYesOrNo();
@@ -281,6 +281,7 @@
             {
                 Console.WriteLine("Got it, I'll choose something else.");
                 words.Remove(guess);
+                allWords.Remove(guess);
                 return false;
             }
 

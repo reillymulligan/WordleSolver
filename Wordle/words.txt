@@ -15,7 +15,6 @@ abash
 abask
 abaue
 abave
-abaze
 abbas
 abbes
 abdal
@@ -3850,9 +3849,6 @@ faxes
 fazed
 fazes
 fchar
-fcomp
-fconv
-fdubs
 fears
 fease
 featy
