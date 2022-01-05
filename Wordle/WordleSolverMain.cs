@@ -44,7 +44,6 @@
 
             while (guesses < MaxGuesses)
             {
-                guesses++;
                 SetLetterFrequencies(letterFrequencies, words);
 
                 var guess = GetBestGuess(letterFrequencies, words);
@@ -53,6 +52,12 @@
                     break;
                 }
 
+                if (!ValidateGuess(guess, words))
+                {
+                    continue;
+                }
+
+                guesses++;
                 var results = new int[WordLength];
                 var allCorrect = SetResults(guess, results, correctIndices);
 
@@ -232,6 +237,33 @@
             }
             
             return result;
+        }
+
+        /// <summary>
+        /// Validates a given guess based on user input and removes the word from the set of words if it's invalid.
+        /// </summary>
+        /// <param name="guess">The guess to be validated</param>
+        /// <param name="words">The set of words to remove invalid guesses from</param>
+        /// <returns>A value indicating whether or not the guess was valid</returns>
+        static bool ValidateGuess(string guess, HashSet<string> words)
+        {
+            Console.WriteLine($"I'm guessing {guess}; is this a valid word? (y/n)");
+            var answer = Console.ReadLine();
+
+            while (answer.Length != 1 && answer[0] != 'y' && answer[0] != 'n')
+            {
+                Console.WriteLine("Invalid answer, please type 'y' or 'n'");
+                answer = Console.ReadLine();
+            }
+
+            if (answer[0] == 'n')
+            {
+                Console.WriteLine("Got it, I'll choose something else.");
+                words.Remove(guess);
+                return false;
+            }
+
+            return true;
         }
     }
 }
