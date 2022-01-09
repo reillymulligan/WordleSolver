@@ -175,6 +175,13 @@
                     maxScore = score;
                     bestGuess = word;
                 }
+                else if (score == maxScore)
+                {
+                    if (words.Contains(word))
+                    {
+                        bestGuess = word;
+                    }
+                }
             }
 
             if (maxScore == 0)

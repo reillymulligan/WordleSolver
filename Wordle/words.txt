@@ -5561,7 +5561,6 @@ imbat
 imbed
 imber
 imbue
-imcnt
 imide
 imido
 imids
@@ -9856,7 +9855,6 @@ senti
 sents
 senvy
 senza
-seora
 sepad
 sepal
 sepia
