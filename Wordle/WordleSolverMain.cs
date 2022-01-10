@@ -31,33 +31,44 @@
         const string LetterCheckInstructions = "(0: wrong letter, 1: right letter wrong spot, 2: right letter right spot)";
 
         /// <summary>
+        /// Best starting word for optimization.
+        /// </summary>
+        const string StartingWord = "rales";
+
+        /// <summary>
         /// Entry point into the program.
         /// </summary>
         /// <param name="args">Arguments to be passed (none accepted)</param>
         static void Main(string[] args)
         {
-            var letterFrequencies = new Dictionary<char, int>();
             var allWords = new HashSet<string>(File.ReadLines(WordsPath));
             var words = new HashSet<string>(File.ReadAllLines(WordsPath));
             var guesses = 0;
             var knownLetters = new char[WordLength];
             var correctWord = string.Empty;
-            var lettersInWord = new HashSet<char>();
             var isHardMode = IsHardMode();
 
             while (guesses < MaxGuesses)
             {
-                SetLetterFrequencies(letterFrequencies, words);
+
+                string guess;
+
+                if (guesses == 0)
+                {
+                    guess = StartingWord;
+                }
+                else if (isHardMode)
+                {
+                    guess = GetBestGuess(words, words);
+                }
+                else
+                {
+                    guess = GetBestGuess(words, allWords);
+                }
                 
-                var guess = GetBestGuess(letterFrequencies, words);
                 if (guess == string.Empty)
                 {
                     break;
-                }
-
-                if (!isHardMode && lettersInWord.Count != WordLength && words.Count != 1 && guesses != MaxGuesses - 1)
-                {
-                    guess = GetBestGuessEasyMode(letterFrequencies, words, allWords, lettersInWord);
                 }
 
                 if (!ValidateGuess(guess, words, allWords))
@@ -76,14 +87,6 @@
                     break;
                 }
 
-                for (int i = 0; i < results.Length; i++)
-                {
-                    if (results[i] != 0 && !lettersInWord.Contains(guess[i]))
-                    {
-                        lettersInWord.Add(guess[i]);
-                    }
-                }
-
                 words = GetPrunedWords(guess, words, results);
             }
 
@@ -100,93 +103,95 @@
         }
 
         /// <summary>
-        /// Sets up the letter frequency dictionary based on the given list of words.
-        /// </summary>
-        /// <param name="letterFrequencies">A dictionary that maps a given character to the number of times it appears in a list of words</param>
-        /// <param name="words">The list of words</param>
-        static void SetLetterFrequencies(IDictionary<char, int> letterFrequencies, IEnumerable<string> words)
-        {
-            for (char c = 'a'; c <= 'z'; c++)
-            {
-                letterFrequencies[c] = 0;
-            }
-
-            foreach (var word in words)
-            {
-                foreach (var c in word)
-                {
-                    letterFrequencies[c]++;
-                }
-            }
-        }
-
-        /// <summary>
         /// Gets the best guess for the puzzle based on letter frequencies. Attempts to get a guess with no repeated letters.
         /// </summary>
-        /// <param name="letterFrequencies">A dictionary that maps a given character to the number of times it appears in a list of words</param>
-        /// <param name="words">The list of words</param>
+        /// <param name="validAnswers">The list of valid answers to the puzzle</param>
+        /// <param name="validGuesses">The list of possible valid guesses</param>
         /// <returns>The best guess possible for the puzzle</returns>
-        static string GetBestGuess(IDictionary<char, int> letterFrequencies, IEnumerable<string> words)
+        static string GetBestGuess(IEnumerable<string> validAnswers, IEnumerable<string> validGuesses)
         {
             var maxScore = int.MinValue;
             var bestGuess = string.Empty;
-            foreach (var word in words)
+            if (validAnswers.Count() == 1)
+            {
+                foreach (var w in validAnswers)
+                {
+                    return w;
+                }
+            }
+
+            foreach (var guess in validGuesses)
             {
                 var score = 0;
-                var seen = new HashSet<char>();
-                foreach (var c in word)
+                var resultToScore = new Dictionary<string, int>();
+                foreach (var answer in validAnswers)
                 {
-                    if (!seen.Contains(c))
+                    var result = string.Empty;
+                    for (int i = 0; i < answer.Length; i++)
                     {
-                        score += letterFrequencies[c];
-                        seen.Add(c);
+                        if (guess[i] == answer[i])
+                        {
+                            result += '2';
+                        }
+                        else if (answer.Contains(guess[i]))
+                        {
+                            result += '1';
+                        }
+                        else
+                        {
+                            result += '0';
+                        }
                     }
+
+                    if (!resultToScore.ContainsKey(result))
+                    {
+                        var subscore = 0;
+                        foreach (var word in validAnswers)
+                        {
+                            for (int i = 0; i < word.Length; i++)
+                            {
+                                if (result[i] == '2')
+                                {
+                                    if (word[i] != guess[i])
+                                    {
+                                        subscore++;
+                                        break;
+                                    }
+                                }
+                                else if (result[i] == '1')
+                                {
+                                    if (word[i] == guess[i] || !word.Contains(guess[i]))
+                                    {
+                                        subscore++;
+                                        break;
+                                    }
+                                }
+                                else
+                                {
+                                    if (word.Contains(guess[i]))
+                                    {
+                                        subscore++;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        resultToScore[result] = subscore;
+                    }
+
+                    score += resultToScore[result];
                 }
 
                 if (score > maxScore)
                 {
                     maxScore = score;
-                    bestGuess = word;
+                    bestGuess = guess;
                 }
-            }
-
-            return bestGuess;
-        }
-
-        static string GetBestGuessEasyMode(IDictionary<char, int> letterFrequencies, IEnumerable<string> words, IEnumerable<string> allWords, HashSet<char> lettersInWord)
-        {
-            var maxScore = int.MinValue;
-            var bestGuess = string.Empty;
-            foreach (var word in allWords)
-            {
-                var score = 0;
-                var seen = new HashSet<char>();
-                foreach (var c in word)
+                else if (score == maxScore && validAnswers.Contains(guess))
                 {
-                    if (!lettersInWord.Contains(c) && !seen.Contains(c))
-                    {
-                        score += letterFrequencies[c];
-                        seen.Add(c);
-                    }
+                    bestGuess = guess;
                 }
-
-                if (score > maxScore)
-                {
-                    maxScore = score;
-                    bestGuess = word;
-                }
-                else if (score == maxScore)
-                {
-                    if (words.Contains(word))
-                    {
-                        bestGuess = word;
-                    }
-                }
-            }
-
-            if (maxScore == 0)
-            {
-                return GetBestGuess(letterFrequencies, words);
             }
 
             return bestGuess;
